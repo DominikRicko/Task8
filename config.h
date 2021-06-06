@@ -17,9 +17,10 @@ void SendMessageTo(SOCKET client, const char* message, int length);
 void Disconnect(SOCKET socket);
 
 void StartClient(SOCKET socket, addrinfo& addressInfo);
-SOCKET connectedSocket = NULL;
+SOCKET outgoingSocket = NULL;
 
 void StartServer(SOCKET socket, addrinfo& addressInfo);
+SOCKET incomingSocket = NULL;
 SOCKET listeningSocket = NULL;
 
 void PrintToConsole(std::string message);
