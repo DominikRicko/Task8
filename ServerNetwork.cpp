@@ -1,53 +1,42 @@
-#include "Network.h"
 #include "ServerNetwork.h"
-
-void StartServer(SOCKET socket, addrinfo& addressInfo) {
-
-    int socketResult = bind(socket, addressInfo.ai_addr, (int)addressInfo.ai_addrlen);
-    if (socketResult == SOCKET_ERROR) {
-        std::cerr << "Bind failed with error: " << WSAGetLastError() << std::endl;
-        exit(4);
-    }
-
-    ListenForIncomingConnections(socket);
-
-}
 
 void ListenForIncomingConnections(SOCKET hostSocket) {
 
-    u_long iMode = 0;
+	u_long iMode = 0;
 
-    if (listen(hostSocket, 1) == SOCKET_ERROR) {
-        std::cerr << "Listen failed with error: " << WSAGetLastError() << std::endl;
-        exit(10);
-    }
+	if (listen(hostSocket, 1) == SOCKET_ERROR) {
+		PrintToConsole("Listen failed with error: " + WSAGetLastError());
+		return;
+	}
 
-    std::cout << "Listening for connections." << std::endl;
+	PrintToConsole("Listening for connections.");
 
-    while (!exitSignalReceived) {
+	SOCKET client = accept(hostSocket, NULL, NULL);
+	if (client == INVALID_SOCKET) {
+		PrintToConsole("Accept failed: " + WSAGetLastError());
+		closesocket(client);
+		return;
+	}
 
-        SOCKET client = accept(hostSocket, NULL, NULL);
-        if (client == INVALID_SOCKET) {
-            std::cerr << "Accept failed: " << WSAGetLastError() << std::endl;
-            closesocket(client);
-            continue;
-        }
+	listeningSocket = client;
 
-        if (connectedSockets.size() > 1) {
-            std::cerr << "New connection rejected." << std::endl;
-            closesocket(client);
-            continue;
-        }
+	if (int result = ioctlsocket(client, FIONBIO, &iMode) != NO_ERROR) {
+		PrintToConsole("Unable to set socket as blocking: " + result);
+		return;
+	}
 
-        if (int result = ioctlsocket(client, FIONBIO, &iMode) != NO_ERROR) {
-            std::cerr << "Unable to set socket as blocking: " << result << std::endl;
-            exit(11);
-        }
+	ReceiveMessage(client);
 
-        connectedSockets.push_back(client);
-        std::thread clientThread(ReceiveMessage, client);
-        clientThread.detach();
+}
 
-    }
+void StartServer(SOCKET socket, addrinfo& addressInfo) {
+
+	int socketResult = bind(socket, addressInfo.ai_addr, (int)addressInfo.ai_addrlen);
+	if (socketResult == SOCKET_ERROR) {
+		PrintToConsole("Bind failed with error: " + WSAGetLastError());
+		exit(4);
+	}
+
+	ListenForIncomingConnections(socket);
 
 }

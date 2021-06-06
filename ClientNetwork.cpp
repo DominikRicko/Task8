@@ -1,4 +1,3 @@
-#include "Network.h"
 #include "ClientNetwork.h"
 
 void StartClient(SOCKET socket, addrinfo& addressInfo) {
@@ -8,11 +7,8 @@ void StartClient(SOCKET socket, addrinfo& addressInfo) {
         socket = INVALID_SOCKET;
     }
 
-    std::string initialMessage = "N";
-
-    std::cout << "Connected to server." << std::endl;
-    connectedSockets.push_back(socket);
-    SendMessageTo(socket, initialMessage.c_str(), sizeof(char) * initialMessage.size());
+    PrintToConsole("Connected to socket.");
+    connectedSocket = socket;
 
     ReceiveMessage(socket);
 }

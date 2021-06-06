@@ -1,7 +1,8 @@
 #pragma once
 
-#include "config.h"
+#include <WinSock2.h>
+#include "Console.h"
+#include "Network.h"
 
 void StartServer(SOCKET socket, addrinfo& addressInfo);
-void ListenForIncomingConnections(SOCKET hostSocket);
-void SendMessageTo(SOCKET client, const char* message, int length);
+SOCKET listeningSocket = NULL;

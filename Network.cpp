@@ -1,11 +1,8 @@
 #include "Network.h"
-#include "ClientNetwork.h"
-#include "ServerNetwork.h"
 
 void mainNetworking(std::string port, bool isServer) {
 
     // Common intialization for both client and server
-
 
     addrinfo* result = GetAddressInfo((char*)port.c_str(), isServer);
 
@@ -30,7 +27,7 @@ addrinfo* GetAddressInfo(char* port, bool isServer) {
 
     int addrResultCode = getaddrinfo(NULL, port, &service, &result);
     if (addrResultCode != 0) {
-        std::cerr << "Failure at getaddrinfo: " << addrResultCode << std::endl;
+        PrintToConsole("Failure at getaddrinfo: " + addrResultCode);
         exit(3);
     }
 
@@ -41,7 +38,7 @@ SOCKET CreateSocket(const addrinfo& availableInfo) {
 
     SOCKET newSocket = socket(availableInfo.ai_family, availableInfo.ai_socktype, availableInfo.ai_protocol);
     if (newSocket == INVALID_SOCKET) {
-        std::cerr << "Error occured: " << WSAGetLastError() << std::endl;
+        PrintToConsole("Error occured: " + WSAGetLastError());
         exit(2);
     }
 
@@ -57,29 +54,31 @@ void ReceiveMessage(SOCKET client) {
         memset(buffer, 0, sizeof(buffer));
         int receiveStatus = recv(client, buffer, MESSAGE_BUFFER_LENGTH, 0);
         if (receiveStatus == SOCKET_ERROR) {
-            std::cerr << "Error occured at receiving message: " << WSAGetLastError() << std::endl;
+            PrintToConsole("Error occured at receiving message: " + WSAGetLastError());
             closesocket(client);
             return;
         }
         else if (receiveStatus > 0) {
-            ResolveMessage(client, buffer, receiveStatus);
+            PrintToConsole(buffer);
+            if (client == listeningSocket) SendMessageTo(connectedSocket, buffer, receiveStatus);
+            else SendMessageTo(listeningSocket, buffer, receiveStatus);
         }
         else if (receiveStatus == 0) {
 
             if (shutdown(client, SD_SEND) == SOCKET_ERROR) {
-                std::cerr << "Shutdown failed: " << WSAGetLastError() << std::endl;
-                std::cout << "Closing the socket anyways." << std::endl;
+                PrintToConsole("Shutdown failed: " + WSAGetLastError());
+                PrintToConsole("Closing the socket anyways.");
             }
             closesocket(client);
 
-            int index = GetSocketIndex(client);
-            if (index > -1) connectedSockets.erase(connectedSockets.begin() + index);
-            std::cout << "Connection closed." << std::endl;
+            if (client == listeningSocket) listeningSocket = NULL;
+            if (client == connectedSocket) connectedSocket = NULL;
+            PrintToConsole("Connection closed.");
             return;
         }
         else {
-            std::cerr << "Unknown scenario." << std::endl;
-            std::cerr << "Receive status: " << receiveStatus << std::endl;
+            PrintToConsole("Unknown scenario.");
+            PrintToConsole("Receive status: " + receiveStatus);
         }
 
     }
@@ -87,20 +86,13 @@ void ReceiveMessage(SOCKET client) {
 }
 
 void SendMessageTo(SOCKET client, const char* message, int length) {
+    if (client == NULL) return;
     if (length > MESSAGE_BUFFER_LENGTH) length = MESSAGE_BUFFER_LENGTH;
     if (send(client, message, length, 0) == SOCKET_ERROR) {
-        std::cerr << "Send failed: " << WSAGetLastError() << std::endl;
+        PrintToConsole("Send failed: " + WSAGetLastError());
         return;
     }
 
-}
-
-int GetSocketIndex(SOCKET socket) {
-    int index = -1;
-    for (int i = 0; i < connectedSockets.size(); i++)
-        if (connectedSockets.at(i) == socket) index = i;
-
-    return index;
 }
 
 void Disconnect(SOCKET socket) {
@@ -109,20 +101,4 @@ void Disconnect(SOCKET socket) {
     shutdown(socket, SD_SEND);
     closesocket(socket);
     return;
-}
-
-void ResolveMessage(SOCKET client, char(&buffer)[MESSAGE_BUFFER_LENGTH], int messageLength) {
-
-    int index = GetSocketIndex(client);
-    if (index < 0) {
-        std::cerr << "Could not find index of socket." << std::endl;
-        return;
-    }
-
-    switch (buffer[0]) {
-    case 'N': SetSocketName(index, buffer); break;
-    case 'P': SendOK(client); break;
-    }
-
-    std::cout << socketNames[index] << ": " << buffer << std::endl;
 }

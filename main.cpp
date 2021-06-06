@@ -1,4 +1,4 @@
-﻿#include "Network.h"
+﻿#include "config.h"
 
 
 void PrintToConsole(std::string message) {
@@ -6,28 +6,47 @@ void PrintToConsole(std::string message) {
     std::cout << message << std::endl;
 }
 
+std::vector<std::string> commandSplit(std::string command, char splitter) {
+    std::vector<std::string> splitCommand;
 
-void createServerPort(std::string command) {
+    while (command.length() > 0) {
 
-    std::string port = command.substr(command.find(" "), command.size());
-    std::thread networkThread(mainNetworking, NULL, port, true);
+        std::size_t startIndex = command.find(splitter);
+        if (startIndex == std::string::npos) {
+            std::size_t endIndex = command.find('\n');
+            if (endIndex != std::string::npos) 
+                splitCommand.push_back(command.substr(0, endIndex - 1));
+            else splitCommand.push_back(command);
+            return splitCommand;
+        }
+        std::string commandPiece = command.substr(0, startIndex);
+        command = command.substr(startIndex, command.length() - startIndex);
 
-    networkThread.detach();
+        splitCommand.push_back(commandPiece);
+
+    }
+
+    return splitCommand;
 }
 
 bool ResolveCommand(std::string command) {
 
-    PrintToConsole(command);
-
     if (std::regex_match(command, std::regex("-startListening +[0-9]*"))) {
 
-        createServerPort(command);
+        std::vector<std::string> commandPieces = commandSplit(command, ' ');
+
+        std::thread networkThread(mainNetworking, commandPieces.at(commandPieces.size() - 1), true);
+        networkThread.detach();
 
         return true;
     }
+    
     if (std::regex_match(command, std::regex("-connect +[0-9]+"))) {
 
+        std::vector<std::string> commandPieces = commandSplit(command, ' ');
 
+        std::thread networkThread(mainNetworking, commandPieces.at(commandPieces.size() - 1), false);
+        networkThread.detach();
 
         return true;
     }
@@ -48,21 +67,20 @@ int main(int argc, char* argv[])
         std::string userInput;
         std::getline(std::cin, userInput);
         if (exitSignalReceived) {
-            std::cout << "Program terminated." << std::endl;
+            PrintToConsole("Program terminated.");
             break;
-        }
-
-        if (ResolveCommand(userInput)) {
-            continue;
         }
 
         if (userInput.length() == 0) {
             continue;
         }
-        
-        for (auto client : connectedSockets) {
-            SendMessageTo(client, userInput.c_str(), userInput.size());
+
+        if (ResolveCommand(userInput)) {
+            continue;
         }
+        
+        if (listeningSocket != NULL) SendMessageTo(listeningSocket, userInput.c_str(), userInput.size());
+        if (connectedSocket != NULL) SendMessageTo(connectedSocket, userInput.c_str(), userInput.size());
 
     }
 

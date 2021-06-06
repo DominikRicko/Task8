@@ -140,12 +140,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ClientNetwork.h" />
-    <ClInclude Include="config.h" />
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="Console.h" />
     <ClInclude Include="Network.h" />
     <ClInclude Include="ServerNetwork.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClientNetwork.cpp" />
+    <ClCompile Include="Console.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="ServerNetwork.cpp" />
