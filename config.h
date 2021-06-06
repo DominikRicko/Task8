@@ -7,6 +7,7 @@
 #include <regex>
 #include <thread>
 #include <ws2tcpip.h>
+#include <mutex>
 
 void mainNetworking(std::string port, bool isServer);
 addrinfo* GetAddressInfo(char* port, bool isServer);

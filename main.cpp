@@ -158,9 +158,12 @@ void StartServer(SOCKET socket, addrinfo& addressInfo) {
 }
 
 
+std::mutex consoleMutex;
 void PrintToConsole(std::string message) {
-    //Tu treba kritični odsječak
+    std::unique_lock<std::mutex> lck(consoleMutex, std::defer_lock);
+    lck.lock();
     std::cout << message << std::endl;
+    lck.unlock();
 }
 
 std::vector<std::string> commandSplit(std::string command, char splitter) {
