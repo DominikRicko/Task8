@@ -59,7 +59,7 @@ void ReceiveMessage(SOCKET client) {
             return;
         }
         else if (receiveStatus > 0) {
-            PrintToConsole(buffer);
+            PrintToConsole(string(buffer));
             if (client == incomingSocket) SendMessageTo(outgoingSocket, buffer, receiveStatus);
             else SendMessageTo(incomingSocket, buffer, receiveStatus);
         }
@@ -116,7 +116,6 @@ void StartClient(SOCKET socket, addrinfo& addressInfo) {
 }
 
 void ListenForIncomingConnections(SOCKET hostSocket) {
-
     u_long iMode = 0;
 
     if (listen(hostSocket, 1) == SOCKET_ERROR) {
@@ -125,22 +124,28 @@ void ListenForIncomingConnections(SOCKET hostSocket) {
     }
     PrintToConsole("Listening for connections.");
 
-    SOCKET client = accept(hostSocket, NULL, NULL);
-    if (client == INVALID_SOCKET) {
-        PrintToConsole(string("Accept failed: ") + to_string(WSAGetLastError()));
-        closesocket(client);
-        return;
+    while (true) {
+        SOCKET client = accept(hostSocket, NULL, NULL);
+        if (client == INVALID_SOCKET) {
+            PrintToConsole(string("Accept failed: ") + to_string(WSAGetLastError()));
+            closesocket(client);
+            return;
+        }
+        if (incomingSocket != INVALID_SOCKET) {
+            Disconnect(client);
+            continue;
+        }
+
+        incomingSocket = client;
+
+        if (int result = ioctlsocket(client, FIONBIO, &iMode) != NO_ERROR) {
+            PrintToConsole(string("Unable to set socket as blocking: ") + to_string(result));
+            return;
+        }
+
+        std::thread receive(ReceiveMessage, client);
+        receive.detach();
     }
-
-    incomingSocket = client;
-
-    if (int result = ioctlsocket(client, FIONBIO, &iMode) != NO_ERROR) {
-        PrintToConsole(string("Unable to set socket as blocking: ") + to_string(result));
-        return;
-    }
-
-    ReceiveMessage(client);
-
 }
 
 void StartServer(SOCKET socket, addrinfo& addressInfo) {
@@ -216,6 +221,7 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-disconnectIncoming"))) {
 
         Disconnect(incomingSocket);
+
         incomingSocket = INVALID_SOCKET;
         PrintToConsole("Disconnected incoming socket.");
         return true;
@@ -225,6 +231,7 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-disconnectOutgoing"))) {
 
         Disconnect(outgoingSocket);
+      
         outgoingSocket = INVALID_SOCKET;
         PrintToConsole("Disconnected outgoing socket.");
         return true;
@@ -234,6 +241,7 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-stopListening"))) {
 
         closesocket(listeningSocket);
+      
         listeningSocket = INVALID_SOCKET;
         PrintToConsole("Stopped Listening.");
         return true;
