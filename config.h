@@ -2,19 +2,28 @@
 
 #include <iostream>
 #include <WinSock2.h>
-#include <ws2tcpip.h>
-#include <iphlpapi.h>
-#include <thread>
-#include <regex>
 #include <string>
-#include <sstream>
 #include <vector>
+#include <regex>
+#include <thread>
+#include <ws2tcpip.h>
+
+void mainNetworking(std::string port, bool isServer);
+addrinfo* GetAddressInfo(char* port, bool isServer);
+SOCKET CreateSocket(const addrinfo& availableInfo);
+void ReceiveMessage(SOCKET client);
+void SendMessageTo(SOCKET client, const char* message, int length);
+void Disconnect(SOCKET socket);
+
+void StartClient(SOCKET socket, addrinfo& addressInfo);
+SOCKET connectedSocket = NULL;
+
+void StartServer(SOCKET socket, addrinfo& addressInfo);
+SOCKET listeningSocket = NULL;
+
+void PrintToConsole(std::string message);
+volatile bool exitSignalReceived = false;
 
 #define MESSAGE_BUFFER_LENGTH 1024
-#define SERVER_ARGUMENT "-s"
-#define CLIENT_ARGUMENT "-c"
-#define DEFAULT_PORT 1337
 #define DEFAULT_WINSOCK_VERSION MAKEWORD(2, 2)
-#define DEFAULT_NAME "Default"
-
 #pragma comment(lib, "Ws2_32.lib")
