@@ -27,7 +27,7 @@ addrinfo* GetAddressInfo(char* port, bool isServer) {
 
     int addrResultCode = getaddrinfo(NULL, port, &service, &result);
     if (addrResultCode != 0) {
-        PrintToConsole("Failure at getaddrinfo: " + addrResultCode);
+        PrintToConsole(std::string("Failure at getaddrinfo: ") + std::to_string(addrResultCode));
         exit(3);
     }
 
@@ -38,7 +38,7 @@ SOCKET CreateSocket(const addrinfo& availableInfo) {
 
     SOCKET newSocket = socket(availableInfo.ai_family, availableInfo.ai_socktype, availableInfo.ai_protocol);
     if (newSocket == INVALID_SOCKET) {
-        PrintToConsole("Error occured: " + WSAGetLastError());
+        PrintToConsole(std::string("Error occured: ") + std::to_string(WSAGetLastError()));
         exit(2);
     }
 
@@ -54,7 +54,7 @@ void ReceiveMessage(SOCKET client) {
         memset(buffer, 0, sizeof(buffer));
         int receiveStatus = recv(client, buffer, MESSAGE_BUFFER_LENGTH, 0);
         if (receiveStatus == SOCKET_ERROR) {
-            PrintToConsole("Error occured at receiving message: " + WSAGetLastError());
+            PrintToConsole(std::string("Error occured at receiving message: ") + std::to_string(WSAGetLastError()));
             closesocket(client);
             return;
         }
@@ -66,19 +66,19 @@ void ReceiveMessage(SOCKET client) {
         else if (receiveStatus == 0) {
 
             if (shutdown(client, SD_SEND) == SOCKET_ERROR) {
-                PrintToConsole("Shutdown failed: " + WSAGetLastError());
-                PrintToConsole("Closing the socket anyways.");
+                PrintToConsole(std::string("Shutdown failed: ") + std::to_string(WSAGetLastError()));
+                PrintToConsole(std::string("Closing the socket anyways."));
             }
             closesocket(client);
 
             if (client == listeningSocket) listeningSocket = NULL;
             if (client == connectedSocket) connectedSocket = NULL;
-            PrintToConsole("Connection closed.");
+            PrintToConsole(std::string("Connection closed."));
             return;
         }
         else {
-            PrintToConsole("Unknown scenario.");
-            PrintToConsole("Receive status: " + receiveStatus);
+            PrintToConsole(std::string("Unknown scenario."));
+            PrintToConsole(std::string("Receive status: " + receiveStatus));
         }
 
     }
@@ -89,7 +89,7 @@ void SendMessageTo(SOCKET client, const char* message, int length) {
     if (client == NULL) return;
     if (length > MESSAGE_BUFFER_LENGTH) length = MESSAGE_BUFFER_LENGTH;
     if (send(client, message, length, 0) == SOCKET_ERROR) {
-        PrintToConsole("Send failed: " + WSAGetLastError());
+        PrintToConsole(std::string("Send failed: ") + std::to_string(WSAGetLastError()));
         return;
     }
 
@@ -110,7 +110,7 @@ void StartClient(SOCKET socket, addrinfo& addressInfo) {
         socket = INVALID_SOCKET;
     }
 
-    PrintToConsole("Connected to socket.");
+    PrintToConsole(std::string("Connected to socket."));
     connectedSocket = socket;
 
     ReceiveMessage(socket);
@@ -121,23 +121,23 @@ void ListenForIncomingConnections(SOCKET hostSocket) {
     u_long iMode = 0;
 
     if (listen(hostSocket, 1) == SOCKET_ERROR) {
-        PrintToConsole("Listen failed with error: " + WSAGetLastError());
+        PrintToConsole(std::string("Listen failed with error: ") + std::to_string(WSAGetLastError()));
         return;
     }
-
     PrintToConsole("Listening for connections.");
 
     SOCKET client = accept(hostSocket, NULL, NULL);
     if (client == INVALID_SOCKET) {
-        PrintToConsole("Accept failed: " + WSAGetLastError());
+        PrintToConsole(string("Accept failed: ") + to_string(WSAGetLastError()));
         closesocket(client);
         return;
     }
 
     listeningSocket = client;
+    closesocket(hostSocket);
 
     if (int result = ioctlsocket(client, FIONBIO, &iMode) != NO_ERROR) {
-        PrintToConsole("Unable to set socket as blocking: " + result);
+        PrintToConsole(string("Unable to set socket as blocking: ") + to_string(result));
         return;
     }
 
@@ -149,7 +149,7 @@ void StartServer(SOCKET socket, addrinfo& addressInfo) {
 
     int socketResult = bind(socket, addressInfo.ai_addr, (int)addressInfo.ai_addrlen);
     if (socketResult == SOCKET_ERROR) {
-        PrintToConsole("Bind failed with error: " + WSAGetLastError());
+        PrintToConsole(string("Bind failed with error: ") + to_string(WSAGetLastError()));
         exit(4);
     }
 
@@ -194,7 +194,7 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-startListening +[0-9]*"))) {
 
         std::vector<std::string> commandPieces = commandSplit(command, ' ');
-        PrintToConsole("Starting to listen on port: " + commandPieces.size() - 1);
+        PrintToConsole(std::string("Starting to listen on port: ") + commandPieces.at(commandPieces.size() - 1));
         std::thread networkThread(mainNetworking, commandPieces.at(commandPieces.size() - 1), true);
         networkThread.detach();
 
@@ -204,7 +204,7 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-connect +[0-9]+"))) {
 
         std::vector<std::string> commandPieces = commandSplit(command, ' ');
-        PrintToConsole("Trying to connect to port: " + commandPieces.size() - 1);
+        PrintToConsole(string("Trying to connect to port") + commandPieces.at(commandPieces.size() - 1));
         std::thread networkThread(mainNetworking, commandPieces.at(commandPieces.size() - 1), false);
         networkThread.detach();
 
@@ -212,7 +212,7 @@ bool ResolveCommand(std::string command) {
     }
 
     if (std::regex_match(command, std::regex("-.*"))) {
-        PrintToConsole("Unknown command.");
+        PrintToConsole(string("Unknown command."));
     }
 
     return false;
@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
         std::string userInput;
         std::getline(std::cin, userInput);
         if (exitSignalReceived) {
-            PrintToConsole("Program terminated.");
+            PrintToConsole(string("Program terminated."));
             break;
         }
 
