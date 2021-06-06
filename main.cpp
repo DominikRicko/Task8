@@ -1,10 +1,10 @@
 ﻿#include "config.h"
 
-void mainNetworking(std::string port, bool isServer) {
+void mainNetworking(std::string ip, std::string port, bool isServer) {
 
     // Common intialization for both client and server
 
-    addrinfo* result = GetAddressInfo((char*)port.c_str(), isServer);
+    addrinfo* result = GetAddressInfo(ip.c_str(), port.c_str(), isServer);
 
     SOCKET socket = CreateSocket(*result);
 
@@ -15,7 +15,7 @@ void mainNetworking(std::string port, bool isServer) {
     freeaddrinfo(result);
 }
 
-addrinfo* GetAddressInfo(char* port, bool isServer) {
+addrinfo* GetAddressInfo(const char* ip, const char* port, bool isServer) {
     addrinfo service;
     addrinfo* result = NULL;
     memset(&service, 0, sizeof(service));
@@ -25,7 +25,7 @@ addrinfo* GetAddressInfo(char* port, bool isServer) {
     service.ai_protocol = IPPROTO_TCP;
     if (isServer) service.ai_flags = AI_PASSIVE;
 
-    int addrResultCode = getaddrinfo(NULL, port, &service, &result);
+    int addrResultCode = getaddrinfo(ip, port, &service, &result);
     if (addrResultCode != 0) {
         PrintToConsole(std::string("Failure at getaddrinfo: ") + std::to_string(addrResultCode));
         exit(3);
@@ -49,7 +49,7 @@ void ReceiveMessage(SOCKET client) {
 
     char buffer[MESSAGE_BUFFER_LENGTH];
 
-    while (!exitSignalReceived) {
+    while (true) {
 
         memset(buffer, 0, sizeof(buffer));
         int receiveStatus = recv(client, buffer, MESSAGE_BUFFER_LENGTH, 0);
@@ -61,7 +61,6 @@ void ReceiveMessage(SOCKET client) {
         else if (receiveStatus > 0) {
             PrintToConsole(string(buffer));
             if (client == incomingSocket) SendMessageTo(outgoingSocket, buffer, receiveStatus);
-            else SendMessageTo(incomingSocket, buffer, receiveStatus);
         }
         else if (receiveStatus == 0) {
 
@@ -85,7 +84,7 @@ void ReceiveMessage(SOCKET client) {
 
 }
 
-void SendMessageTo(SOCKET client, const char* message, int length) {
+void SendMessageTo(SOCKET client, const char* message, size_t length) {
     if (client == INVALID_SOCKET) return;
     if (length > MESSAGE_BUFFER_LENGTH) length = MESSAGE_BUFFER_LENGTH;
     if (send(client, message, length, 0) == SOCKET_ERROR) {
@@ -195,24 +194,27 @@ std::vector<std::string> commandSplit(std::string command, char splitter) {
 
 bool ResolveCommand(std::string command) {
 
-    if (std::regex_match(command, std::regex("-startListening +[0-9]*"))) {
+    if (std::regex_match(command, std::regex("-listen +[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9]+"))) {
 
         std::vector<std::string> commandPieces = commandSplit(command, ' ');
+        std::vector<std::string> commandPieces2 = commandSplit(commandPieces.at(commandPieces.size() - 1), ':');
+        PrintToConsole(std::string("Starting to listen on address: ") + commandPieces.at(commandPieces.size() - 1));
         closesocket(listeningSocket);
-        PrintToConsole(std::string("Starting to listen on port: ") + commandPieces.at(commandPieces.size() - 1));
-
-        std::thread networkThread(mainNetworking, commandPieces.at(commandPieces.size() - 1), true);
+        listeningSocket = INVALID_SOCKET;
+        std::thread networkThread(mainNetworking, commandPieces2.at(0), commandPieces2.at(commandPieces2.size() - 1), true);
         networkThread.detach();
 
         return true;
     }
     
-    if (std::regex_match(command, std::regex("-connect +[0-9]+"))) {
+    if (std::regex_match(command, std::regex("-connect +[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9]+"))) {
 
         std::vector<std::string> commandPieces = commandSplit(command, ' ');
-        PrintToConsole(std::string("Trying to connect to port: ") + commandPieces.at( commandPieces.size() - 1));
-
-        std::thread networkThread(mainNetworking, commandPieces.at(commandPieces.size() - 1), false);
+        std::vector<std::string> commandPieces2 = commandSplit(commandPieces.at(commandPieces.size() - 1), ':');
+        PrintToConsole(std::string("Trying to connect to application at: ") + commandPieces.at( commandPieces.size() - 1));
+        if(outgoingSocket != INVALID_SOCKET) Disconnect(outgoingSocket);
+        outgoingSocket = INVALID_SOCKET;
+        std::thread networkThread(mainNetworking, commandPieces2.at(0), commandPieces2.at(commandPieces2.size() - 1), false);
         networkThread.detach();
 
         return true;
@@ -238,7 +240,7 @@ bool ResolveCommand(std::string command) {
 
     }
 
-    if (std::regex_match(command, std::regex("-stopListening"))) {
+    if (std::regex_match(command, std::regex("-stopListen"))) {
 
         closesocket(listeningSocket);
       
@@ -246,6 +248,21 @@ bool ResolveCommand(std::string command) {
         PrintToConsole("Stopped Listening.");
         return true;
 
+    }
+
+    if (std::regex_match(command, std::regex("-help"))) {
+
+        PrintToConsole("Commands: ");
+        PrintToConsole("\t-listen [ip_address]:[portNumber] - start listening on given ip address and port.");
+        PrintToConsole("\t-stopListen - stops listening.");
+        PrintToConsole("\t-connect [ip_address]:[portNumber] - attempts connecting to given ip address and port.");
+        PrintToConsole("\t-disconnectOutgoing - disconnects the socket obtained with -connect command.");
+        PrintToConsole("\t-disconnectIncoming - disconnects the socket that has connected to listening socket.");
+        PrintToConsole("\t-help - displays these messages.");
+        PrintToConsole("");
+        PrintToConsole("Typing anything without \'-\' is treated as a message to be sent to other clients.");
+
+        return true;
     }
 
     if (std::regex_match(command, std::regex("-.*"))) {
@@ -264,13 +281,14 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    while (!exitSignalReceived) {
+    PrintToConsole("Task 8: Chain Connection App v1.0");
+    PrintToConsole("Made by Stjepan Mrganic & Dominik Ricko");
+    PrintToConsole("Type -help for commands.");
+    PrintToConsole("");
+
+    while (true) {
         std::string userInput;
         std::getline(std::cin, userInput);
-        if (exitSignalReceived) {
-            PrintToConsole(string("Program terminated."));
-            break;
-        }
 
         if (userInput.length() == 0) {
             continue;

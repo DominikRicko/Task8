@@ -9,11 +9,11 @@
 #include <ws2tcpip.h>
 #include <mutex>
 
-void mainNetworking(std::string port, bool isServer);
-addrinfo* GetAddressInfo(char* port, bool isServer);
+void mainNetworking(std::string ip, std::string port, bool isServer);
+addrinfo* GetAddressInfo(const char* ip, const char* port, bool isServer);
 SOCKET CreateSocket(const addrinfo& availableInfo);
 void ReceiveMessage(SOCKET client);
-void SendMessageTo(SOCKET client, const char* message, int length);
+void SendMessageTo(SOCKET client, const char* message, size_t length);
 void Disconnect(SOCKET socket);
 
 void StartClient(SOCKET socket, addrinfo& addressInfo);
@@ -23,9 +23,7 @@ void StartServer(SOCKET socket, addrinfo& addressInfo);
 SOCKET incomingSocket = INVALID_SOCKET;
 SOCKET listeningSocket = INVALID_SOCKET;
 
-
 void PrintToConsole(std::string message);
-volatile bool exitSignalReceived = false;
 
 using std::string;
 using std::to_string;
