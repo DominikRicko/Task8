@@ -59,7 +59,7 @@ void ReceiveMessage(SOCKET client) {
             return;
         }
         else if (receiveStatus > 0) {
-            PrintToConsole(buffer);
+            PrintToConsole(string(buffer));
             if (client == incomingSocket) SendMessageTo(outgoingSocket, buffer, receiveStatus);
             else SendMessageTo(incomingSocket, buffer, receiveStatus);
         }
@@ -70,8 +70,8 @@ void ReceiveMessage(SOCKET client) {
                 PrintToConsole(std::string("Closing the socket anyways."));
             }
             closesocket(client);
-            if (client == incomingSocket) incomingSocket = NULL;
-            if (client == outgoingSocket) outgoingSocket = NULL;
+            if (client == incomingSocket) incomingSocket = INVALID_SOCKET;
+            if (client == outgoingSocket) outgoingSocket = INVALID_SOCKET;
             PrintToConsole("Connection closed.");
 
             return;
@@ -86,7 +86,7 @@ void ReceiveMessage(SOCKET client) {
 }
 
 void SendMessageTo(SOCKET client, const char* message, int length) {
-    if (client == NULL) return;
+    if (client == INVALID_SOCKET) return;
     if (length > MESSAGE_BUFFER_LENGTH) length = MESSAGE_BUFFER_LENGTH;
     if (send(client, message, length, 0) == SOCKET_ERROR) {
         PrintToConsole(std::string("Send failed: ") + std::to_string(WSAGetLastError()));
@@ -116,7 +116,6 @@ void StartClient(SOCKET socket, addrinfo& addressInfo) {
 }
 
 void ListenForIncomingConnections(SOCKET hostSocket) {
-
     u_long iMode = 0;
 
     if (listen(hostSocket, 1) == SOCKET_ERROR) {
@@ -125,22 +124,28 @@ void ListenForIncomingConnections(SOCKET hostSocket) {
     }
     PrintToConsole("Listening for connections.");
 
-    SOCKET client = accept(hostSocket, NULL, NULL);
-    if (client == INVALID_SOCKET) {
-        PrintToConsole(string("Accept failed: ") + to_string(WSAGetLastError()));
-        closesocket(client);
-        return;
+    while (true) {
+        SOCKET client = accept(hostSocket, NULL, NULL);
+        if (client == INVALID_SOCKET) {
+            PrintToConsole(string("Accept failed: ") + to_string(WSAGetLastError()));
+            closesocket(client);
+            return;
+        }
+        if (incomingSocket != INVALID_SOCKET) {
+            Disconnect(client);
+            continue;
+        }
+
+        incomingSocket = client;
+
+        if (int result = ioctlsocket(client, FIONBIO, &iMode) != NO_ERROR) {
+            PrintToConsole(string("Unable to set socket as blocking: ") + to_string(result));
+            return;
+        }
+
+        std::thread receive(ReceiveMessage, client);
+        receive.detach();
     }
-
-    incomingSocket = client;
-
-    if (int result = ioctlsocket(client, FIONBIO, &iMode) != NO_ERROR) {
-        PrintToConsole(string("Unable to set socket as blocking: ") + to_string(result));
-        return;
-    }
-
-    ReceiveMessage(client);
-
 }
 
 void StartServer(SOCKET socket, addrinfo& addressInfo) {
@@ -216,7 +221,7 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-disconnectIncoming"))) {
 
         Disconnect(incomingSocket);
-        PrintToConsole("Disconnected incoming socket.");
+        PrintToConsole(string("Disconnected incoming socket."));
         return true;
 
     }
@@ -224,7 +229,7 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-disconnectOutgoing"))) {
 
         Disconnect(outgoingSocket);
-        PrintToConsole("Disconnected outgoing socket.");
+        PrintToConsole(string("Disconnected outgoing socket."));
         return true;
 
     }
@@ -232,7 +237,7 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-stopListening"))) {
 
         closesocket(listeningSocket);
-        PrintToConsole("Stopped Listening.");
+        PrintToConsole(string("Stopped Listening."));
         return true;
 
     }
@@ -269,8 +274,8 @@ int main(int argc, char* argv[])
             continue;
         }
         
-        if (incomingSocket != NULL) SendMessageTo(incomingSocket, userInput.c_str(), userInput.size());
-        if (outgoingSocket != NULL) SendMessageTo(outgoingSocket, userInput.c_str(), userInput.size());
+        if (incomingSocket != INVALID_SOCKET) SendMessageTo(incomingSocket, userInput.c_str(), userInput.size());
+        if (outgoingSocket != INVALID_SOCKET) SendMessageTo(outgoingSocket, userInput.c_str(), userInput.size());
 
     }
 
