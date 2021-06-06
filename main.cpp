@@ -1,4 +1,4 @@
-#include "config.h"
+﻿#include "config.h"
 
 std::vector<SOCKET> connectedSockets;
 std::vector<std::string> socketNames;
@@ -11,6 +11,11 @@ int GetSocketIndex(SOCKET socket) {
         if (connectedSockets.at(i) == socket) index = i;
 
     return index;
+}
+
+void PrintToConsole(std::string message) {
+    //Tu treba kritični odsječak
+    std::cout << message << std::endl;
 }
 
 void SendMessageTo(SOCKET client, const char* message, int length) {
@@ -209,6 +214,26 @@ addrinfo* GetAddressInfo(char *port, bool isServer) {
     return result;
 }
 
+bool ResolveCommand(std::string command) {
+
+    PrintToConsole(command);
+
+    if (std::regex_match(command, std::regex("-startListening *[0-9]+"))) {
+
+
+
+        return true;
+    }
+    if (std::regex_match(command, std::regex("-connect *[0-9]+"))) {
+
+
+
+        return true;
+    }
+
+    return false;
+}
+
 void mainNetworking(std::string name, int port, bool isServer) {
 
     // Common intialization for both client and server
@@ -230,56 +255,24 @@ void mainNetworking(std::string name, int port, bool isServer) {
 int main(int argc, char* argv[])
 {
 
-    bool isServer = false;
-    int port = DEFAULT_PORT;
-    std::string name = DEFAULT_NAME;
-
-    if (argc < 2) {
-        std::cout << "Server argument omitted, starting as Client." << std::endl;
-    }
-    else {
-
-        if (std::regex_match(argv[1], std::regex(SERVER_ARGUMENT))) {
-            isServer = true;
-        }
-        else if (std::regex_match(argv[1], std::regex(CLIENT_ARGUMENT))) {
-            isServer = false;
-        }
-        else {
-            std::cerr << "Unknown argument, starting as client." << std::endl;
-        }
-    }
-    
-    if (argc < 3) {
-        std::cout << "Name not defined, going with default." << std::endl;
-    }
-    else {
-        name = argv[2];
-    }
-
-    if (argc < 4) {
-        std::cout << "Missing desired port argument. Going with default: " << port << std::endl;
-    }
-    else {
-        std::stringstream ss(argv[3]);
-        ss >> port;
-        std::cout << "Port: " << port << std::endl;
-    }
-
     WSADATA wsaData;
     if (int err = WSAStartup(DEFAULT_WINSOCK_VERSION, &wsaData)) {
         std::cerr << "WSAStartup failed with error: " << err << std::endl;
         exit(1);
     }
 
-    std::thread networkThread(mainNetworking, name, port, isServer);
+    //std::thread networkThread(mainNetworking, name, port, isServer);
 
     while (!exitSignalReceived) {
         std::string userInput;
         std::getline(std::cin, userInput);
         if (exitSignalReceived) {
-            std::cout << "Server disconnected." << std::endl;
+            std::cout << "Program terminated." << std::endl;
             break;
+        }
+
+        if (ResolveCommand(userInput)) {
+            continue;
         }
 
         if (userInput.length() == 0) {
