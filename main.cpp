@@ -221,7 +221,9 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-disconnectIncoming"))) {
 
         Disconnect(incomingSocket);
-        PrintToConsole(string("Disconnected incoming socket."));
+
+        incomingSocket = INVALID_SOCKET;
+        PrintToConsole("Disconnected incoming socket.");
         return true;
 
     }
@@ -229,7 +231,9 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-disconnectOutgoing"))) {
 
         Disconnect(outgoingSocket);
-        PrintToConsole(string("Disconnected outgoing socket."));
+      
+        outgoingSocket = INVALID_SOCKET;
+        PrintToConsole("Disconnected outgoing socket.");
         return true;
 
     }
@@ -237,7 +241,9 @@ bool ResolveCommand(std::string command) {
     if (std::regex_match(command, std::regex("-stopListening"))) {
 
         closesocket(listeningSocket);
-        PrintToConsole(string("Stopped Listening."));
+      
+        listeningSocket = INVALID_SOCKET;
+        PrintToConsole("Stopped Listening.");
         return true;
 
     }
@@ -274,8 +280,8 @@ int main(int argc, char* argv[])
             continue;
         }
         
-        if (incomingSocket != INVALID_SOCKET) SendMessageTo(incomingSocket, userInput.c_str(), userInput.size());
-        if (outgoingSocket != INVALID_SOCKET) SendMessageTo(outgoingSocket, userInput.c_str(), userInput.size());
+        SendMessageTo(incomingSocket, userInput.c_str(), userInput.size());
+        SendMessageTo(outgoingSocket, userInput.c_str(), userInput.size());
 
     }
 
