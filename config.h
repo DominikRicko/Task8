@@ -17,10 +17,12 @@ void SendMessageTo(SOCKET client, const char* message, int length);
 void Disconnect(SOCKET socket);
 
 void StartClient(SOCKET socket, addrinfo& addressInfo);
-SOCKET connectedSocket = INVALID_SOCKET;
+SOCKET outgoingSocket = INVALID_SOCKET;
 
 void StartServer(SOCKET socket, addrinfo& addressInfo);
+SOCKET incomingSocket = INVALID_SOCKET;
 SOCKET listeningSocket = INVALID_SOCKET;
+
 
 void PrintToConsole(std::string message);
 volatile bool exitSignalReceived = false;
