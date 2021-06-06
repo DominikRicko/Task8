@@ -16,5 +16,7 @@
 #define DEFAULT_PORT 1337
 #define DEFAULT_WINSOCK_VERSION MAKEWORD(2, 2)
 #define DEFAULT_NAME "Default"
+volatile bool exitSignalReceived = false;
+std::vector<SOCKET> connectedSockets;
 
 #pragma comment(lib, "Ws2_32.lib")
