@@ -3,6 +3,7 @@
 std::vector<SOCKET> connectedSockets;
 std::vector<std::string> socketNames;
 volatile bool exitSignalReceived = false;
+int coutner;
 
 int GetSocketIndex(SOCKET socket) {
     int index = -1;
