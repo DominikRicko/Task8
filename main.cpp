@@ -16,7 +16,7 @@ void mainNetworking(std::string ip, std::string port, bool isServer) {
 }
 
 addrinfo* GetAddressInfo(const char* ip, const char* port, bool isServer) {
-    addrinfo service;
+    addrinfo service; 
     addrinfo* result = NULL;
     memset(&service, 0, sizeof(service));
 
@@ -201,13 +201,18 @@ std::vector<std::string> commandSplit(std::string command, char splitter) {
 bool ResolveCommand(std::string command) {
 
     if (std::regex_match(command, std::regex("-in .+"))) {
-        SendMessageTo(incomingSocket, command.c_str(), command.length());
+
+        string outputMessage = command.substr(4, command.size());
+
+        SendMessageTo(incomingSocket, outputMessage.c_str(), outputMessage.length());
 
         return true;
     }
 
     if (std::regex_match(command, std::regex("-out .+"))) {
-        SendMessageTo(outgoingSocket, command.c_str(), command.length());
+
+        string outputMessage = command.substr(5, command.size());
+        SendMessageTo(outgoingSocket, outputMessage.c_str(), outputMessage.length());
 
         return true;
     }
