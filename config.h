@@ -15,6 +15,7 @@ SOCKET CreateSocket(const addrinfo& availableInfo);
 void ReceiveMessage(SOCKET client);
 void SendMessageTo(SOCKET client, const char* message, size_t length);
 void Disconnect(SOCKET socket);
+bool ResolveCommand(std::string command);
 
 void StartClient(SOCKET socket, addrinfo& addressInfo);
 SOCKET outgoingSocket = INVALID_SOCKET;
