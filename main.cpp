@@ -16,7 +16,7 @@ void mainNetworking(std::string ip, std::string port, bool isServer) {
 }
 
 addrinfo* GetAddressInfo(const char* ip, const char* port, bool isServer) {
-    addrinfo service;
+    addrinfo service; 
     addrinfo* result = NULL;
     memset(&service, 0, sizeof(service));
 
@@ -59,8 +59,14 @@ void ReceiveMessage(SOCKET client) {
             return;
         }
         else if (receiveStatus > 0) {
-            PrintToConsole(string(buffer));
-            if (client == incomingSocket) SendMessageTo(outgoingSocket, buffer, receiveStatus);
+
+            std::string bufferString = std::string(buffer, receiveStatus);
+            PrintToConsole(bufferString);
+            if (!ResolveCommand(bufferString)){
+                if(client == incomingSocket) SendMessageTo(outgoingSocket, buffer, receiveStatus);
+                else if(client == outgoingSocket) SendMessageTo(incomingSocket, buffer, receiveStatus);
+            }
+            
         }
         else if (receiveStatus == 0) {
 
@@ -194,6 +200,23 @@ std::vector<std::string> commandSplit(std::string command, char splitter) {
 
 bool ResolveCommand(std::string command) {
 
+    if (std::regex_match(command, std::regex("-in .+"))) {
+
+        string outputMessage = command.substr(4, command.size());
+
+        SendMessageTo(incomingSocket, outputMessage.c_str(), outputMessage.length());
+
+        return true;
+    }
+
+    if (std::regex_match(command, std::regex("-out .+"))) {
+
+        string outputMessage = command.substr(5, command.size());
+        SendMessageTo(outgoingSocket, outputMessage.c_str(), outputMessage.length());
+
+        return true;
+    }
+
     if (std::regex_match(command, std::regex("-listen +[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9]+"))) {
 
         std::vector<std::string> commandPieces = commandSplit(command, ' ');
@@ -258,9 +281,11 @@ bool ResolveCommand(std::string command) {
         PrintToConsole("\t-connect [ip_address]:[portNumber] - attempts connecting to given ip address and port.");
         PrintToConsole("\t-disconnectOutgoing - disconnects the socket obtained with -connect command.");
         PrintToConsole("\t-disconnectIncoming - disconnects the socket that has connected to listening socket.");
+        PrintToConsole("\t-in [message] - sends a message to incoming socket (and propagates it in that direction).");
+        PrintToConsole("\t-out [message] - sends a message to outgoing socket (and propagates it in that direction).");
         PrintToConsole("\t-help - displays these messages.");
         PrintToConsole("");
-        PrintToConsole("Typing anything without \'-\' is treated as a message to be sent to other clients.");
+        PrintToConsole("Typing anything without \'-\' is treated as a message to be sent to both directions (with propagation).");
 
         return true;
     }
